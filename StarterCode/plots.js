@@ -1,38 +1,102 @@
-//READ JSON USING D3
-d3.json("samples.json").then(function(sampleData){
-    console.log(sampleData);
+function buildMetadata(sample) {
+    d3.json("samples.json").then((data) => {
+      var metadata = data.metadata;
 
-    //Set variables for OTUs (VIEW FROM CONSOLE LOG, SEE LINE 4)
-    var otu_values = sampleData.samples[0].sample_values
-    var otu_ids = sampleData.samples[0].otu_ids 
-    var otu_labels = sampleData.samples[0].otu_labels
-    
-    //Slice to get the Top 10s of ID, Values. and their respective Labels
-        
-        //IDs
-        var OTU_Top_ID_Values = otu_ids.slice(0,10).reverse();
-            //Set ID's to desired format for graph (Adding the "OTU" before ID number.. ie. OTU 1167)
-            var OTU_Top_ID = OTU_Top_ID_Values.map(d => "OTU " + d) 
-        //console.log(OTU_Top_ID);
+      var resultArray = metadata.filter(sampleObj => sampleObj.id == sample);
+      var result = resultArray[0];
 
-        //Values
-        var OTU_Top_Values = otu_values.slice(0,10).reverse();
-        //console.log(OTU_Top_Values);
+      var PANEL = d3.select("#sample-metadata");
+  
+      PANEL.html("");
+  
+      
+      Object.entries(result).forEach(([key, value]) => {
+        PANEL.append("h6").text(`${key.toUpperCase()}: ${value}`);
+      });
+  
+      buildGauge(result.wfreq);
+    });
+  }
+  
+  function buildCharts(sample) {
+    d3.json("samples.json").then((data) => {
+      var samples = data.samples;
+      var resultArray = samples.filter(sampleObj => sampleObj.id == sample);
+      var result = resultArray[0];
+  
+      var otu_ids = result.otu_ids;
+      var otu_labels = result.otu_labels;
+      var sample_values = result.sample_values;
+  
+      var bubbleLayout = {
+        title: "Bacteria Cultures Per Sample",
+        margin: { t: 0 },
+        hovermode: "closest",
+        xaxis: { title: "OTU ID" },
+        margin: { t: 30}
+      };
+      var bubbleData = [
+        {
+          x: otu_ids,
+          y: sample_values,
+          text: otu_labels,
+          mode: "markers",
+          marker: {
+            size: sample_values,
+            color: otu_ids,
+            colorscale: "Earth"
+          }
+        }
+      ];
+  
+      Plotly.newPlot("bubble", bubbleData, bubbleLayout);
+  
+      var yticks = otu_ids.slice(0, 10).map(otuID => `OTU ${otuID}`).reverse();
+      var barData = [
+        {
+          y: yticks,
+          x: sample_values.slice(0, 10).reverse(),
+          text: otu_labels.slice(0, 10).reverse(),
+          type: "bar",
+          orientation: "h",
+        }
+      ];
+  
+      var barLayout = {
+        title: "Top 10 Bacteria Cultures Found",
+        margin: { t: 30, l: 150 }
+      };
+  
+      Plotly.newPlot("bar", barData, barLayout);
+    });
+  }
+  
+  function init() {
 
-        //Labels for Hoverover
-        var OTU_Top_Labels = otu_labels.slice(0,10).reverse();
-        //console.log(OTU_Top_Labels);
+    var selector = d3.select("#selDataset");
+  
 
-    //BAR CHART
-    var trace = {
-        x: OTU_Top_Values,
-        y: OTU_Top_ID,
-        mode: "markers",
-        text: OTU_Top_Labels,
-        type: "bar",
-        orientation: "h",
-    };
-    var data = [trace];
-    var layout = {title: "Top 10 OTUs"};
-    Plotly.newPlot("bar", data, layout);
-}); 
+    d3.json("samples.json").then((data) => {
+      var sampleNames = data.names;
+  
+      sampleNames.forEach((sample) => {
+        selector
+          .append("option")
+          .text(sample)
+          .property("value", sample);
+      });
+  
+
+      var firstSample = sampleNames[0];
+      buildCharts(firstSample);
+      buildMetadata(firstSample);
+    });
+  }
+  
+  function optionChanged(newSample) {
+
+    buildCharts(newSample);
+    buildMetadata(newSample);
+  }
+  
+  init();
