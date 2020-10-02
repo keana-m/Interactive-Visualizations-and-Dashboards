@@ -1,79 +1,102 @@
+function buildMetadata(sample) {
+    d3.json("samples.json").then((data) => {
+      var metadata = data.metadata;
 
-/**
- * Helper function to select stock data
- * Returns an array of values
- * @param {array} rows
- * @param {integer} index
- * index 0 - Date
- * index 1 - Open
- * index 2 - High
- * index 3 - Low
- * index 4 - Close
- * index 5 - Volume
- */
+      var resultArray = metadata.filter(sampleObj => sampleObj.id == sample);
+      var result = resultArray[0];
 
-// Submit Button handler
-function handleSubmit() {
-  // @TODO: YOUR CODE HERE
-  // Prevent the page from refreshing
-  d3.event.preventDefault();
+      var PANEL = d3.select("#sample-metadata");
+  
+      PANEL.html("");
+  
+      
+      Object.entries(result).forEach(([key, value]) => {
+        PANEL.append("h6").text(`${key.toUpperCase()}: ${value}`);
+      });
+  
+      buildGauge(result.wfreq);
+    });
+  }
+  
+  function buildCharts(sample) {
+    d3.json("samples.json").then((data) => {
+      var samples = data.samples;
+      var resultArray = samples.filter(sampleObj => sampleObj.id == sample);
+      var result = resultArray[0];
+  
+      var otu_ids = result.otu_ids;
+      var otu_labels = result.otu_labels;
+      var sample_values = result.sample_values;
+  
+      var bubbleLayout = {
+        title: "Bacteria Cultures Per Sample",
+        margin: { t: 0 },
+        hovermode: "closest",
+        xaxis: { title: "OTU ID" },
+        margin: { t: 30}
+      };
+      var bubbleData = [
+        {
+          x: otu_ids,
+          y: sample_values,
+          text: otu_labels,
+          mode: "markers",
+          marker: {
+            size: sample_values,
+            color: otu_ids,
+            colorscale: "Earth"
+          }
+        }
+      ];
+  
+      Plotly.newPlot("bubble", bubbleData, bubbleLayout);
+  
+      var yticks = otu_ids.slice(0, 10).map(otuID => `OTU ${otuID}`).reverse();
+      var barData = [
+        {
+          y: yticks,
+          x: sample_values.slice(0, 10).reverse(),
+          text: otu_labels.slice(0, 10).reverse(),
+          type: "bar",
+          orientation: "h",
+        }
+      ];
+  
+      var barLayout = {
+        title: "Top 10 Bacteria Cultures Found",
+        margin: { t: 30, l: 150 }
+      };
+  
+      Plotly.newPlot("bar", barData, barLayout);
+    });
+  }
+  
+  function init() {
 
-  // Select the input value from the form
+    var selector = d3.select("#selDataset");
+  
 
-  // clear the input value
+    d3.json("samples.json").then((data) => {
+      var sampleNames = data.names;
+  
+      sampleNames.forEach((sample) => {
+        selector
+          .append("option")
+          .text(sample)
+          .property("value", sample);
+      });
+  
 
-  // Build the plot with the new stock
-}
+      var firstSample = sampleNames[0];
+      buildCharts(firstSample);
+      buildMetadata(firstSample);
+    });
+  }
+  
+  function optionChanged(newSample) {
 
-function buildPlot(stock) {
-  var apiKey = "YOUR KEY HERE";
-
-  var url = `https://www.quandl.com/api/v3/datasets/WIKI/${stock}.json?start_date=2016-10-01&end_date=2017-10-01&api_key=${apiKey}`;
-
-  d3.json(url).then(function(data) {
-    // Grab values from the response json object to build the plots
-    var name = data.dataset.name;
-    var stock = data.dataset.dataset_code;
-    var startDate = data.dataset.start_date;
-    var endDate = data.dataset.end_date;
-    // Print the names of the columns
-    console.log(data.dataset.column_names);
-    // Print the data for each day
-    console.log(data.dataset.data);
-    // Use map() to build an array of the the dates
-    // var dates =
-    // Use map() to build an array of the closing prices
-    // var closingPrices =
-
-    var trace1 = {
-      type: "scatter",
-      mode: "lines",
-      name: name,
-      x: dates,
-      y: closingPrices,
-      line: {
-        color: "#17BECF"
-      }
-    };
-
-    var data = [trace1];
-
-    var layout = {
-      title: `${stock} closing prices`,
-      xaxis: {
-        range: [startDate, endDate],
-        type: "date"
-      },
-      yaxis: {
-        autorange: true,
-        type: "linear"
-      }
-    };
-
-    Plotly.newPlot("plot", data, layout);
-
-  });
-}
-
-// Add event listener for submit button
-// @TODO: YOUR CODE HERE
+    buildCharts(newSample);
+    buildMetadata(newSample);
+  }
+  
+  init();
